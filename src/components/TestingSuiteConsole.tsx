@@ -9,18 +9,28 @@ import { StatusIndicator } from './StatusIndicator';
 
 export function TestingSuiteConsole() {
   const [summary, setSummary] = useState<TestSuiteSummary | null>(null);
-  const [running, setRunning] = useState(false);
+  const [manualRunning, setManualRunning] = useState(false);
   const [filter, setFilter] = useState<'all' | TestCategory>('all');
 
+  const running = manualRunning || summary === null;
+
   const executeSuite = async () => {
-    setRunning(true);
+    setManualRunning(true);
     const result = await runAllBreatheWiseTests();
     setSummary(result);
-    setRunning(false);
+    setManualRunning(false);
   };
 
   useEffect(() => {
-    void executeSuite();
+    let active = true;
+    void runAllBreatheWiseTests().then((result) => {
+      if (active) {
+        setSummary(result);
+      }
+    });
+    return () => {
+      active = false;
+    };
   }, []);
 
   const visibleResults = summary

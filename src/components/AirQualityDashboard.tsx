@@ -1,26 +1,14 @@
-import { useState } from 'react';
 import {
   AlertTriangle,
   ArrowRight,
   Clock,
-  CloudFog,
   Compass,
   Droplets,
   MapPin,
   RefreshCw,
-  Table,
   Thermometer,
   Wind,
 } from 'lucide-react';
-import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
 import type {
   AirQualityReading,
   BreatheWisePage,
@@ -30,6 +18,7 @@ import type {
 import { LIFESTYLE_LABELS } from '../data/breathewiseDefaults';
 import skylineImageUrl from '../assets/images/urban_winter_smog_skyline_1795710040171.jpg';
 import { AQIIndicator, getAqiVisualMeta } from './AQIIndicator';
+import { DiurnalTrendCard } from './DiurnalTrendCard';
 
 interface AirQualityDashboardProps {
   airQuality: AirQualityReading;
@@ -50,7 +39,6 @@ export function AirQualityDashboard({
   onRefresh,
   onNavigate,
 }: AirQualityDashboardProps) {
-  const [showDataTable, setShowDataTable] = useState(false);
   const meta = getAqiVisualMeta(airQuality.category, true);
   const aqiPercent =
     airQuality.aqi !== null ? Math.min(100, Math.round((airQuality.aqi / 500) * 100)) : 0;
@@ -143,10 +131,14 @@ export function AirQualityDashboard({
                 aria-valuemin={0}
                 aria-valuemax={500}
               >
-                <div
-                  className={`h-full transition-all duration-300 ${meta.barClass}`}
-                  style={{ width: `${aqiPercent}%` }}
-                />
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 100 8"
+                  preserveAspectRatio="none"
+                  className={`h-full w-full block ${meta.textClass}`}
+                >
+                  <rect x="0" y="0" width={aqiPercent} height="8" className="fill-current" />
+                </svg>
               </div>
               <div className="flex justify-between text-[11px] font-mono tabular-nums text-slate-400">
                 <span>0 Good</span>
@@ -289,7 +281,7 @@ export function AirQualityDashboard({
             <Compass className="w-4 h-4 text-cyan-600" />
           </div>
           <div className="mt-2 text-sm font-bold text-slate-900 leading-snug">
-            {airQuality.isDemo ? 'Demo Mode Sample Feed' : 'Live WAQI Telemetry'}
+            {airQuality.isDemo ? 'Demo Mode Sample Feed' : 'Live Environmental Telemetry'}
           </div>
           <p className="mt-1 text-xs text-slate-600">
             {airQuality.stationName}
@@ -364,129 +356,7 @@ export function AirQualityDashboard({
         </div>
       </section>
 
-      {/* Diurnal 24-Hour Smog Pattern Chart + Accessible Table Toggle */}
-      <section
-        aria-labelledby="diurnal-chart-heading"
-        className="bg-white border border-slate-200 rounded-xl p-6 space-y-4"
-      >
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <h2
-              id="diurnal-chart-heading"
-              className="font-display text-lg font-bold text-slate-900 flex items-center gap-2"
-            >
-              <CloudFog className="w-5 h-5 text-teal-700" />
-              <span>Diurnal AQI & PM2.5 Inversion Curve</span>
-            </h2>
-            <p className="mt-1 text-sm text-slate-600">
-              Text summary: {airQuality.cityName} typically reaches its lowest particulate window around{' '}
-              <strong className="text-slate-900">{airQuality.bestWindow}</strong> and peaks during{' '}
-              <strong className="text-slate-900">{airQuality.peakWindow}</strong>.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setShowDataTable((prev) => !prev)}
-            aria-expanded={showDataTable}
-            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
-          >
-            <Table className="w-3.5 h-3.5" />
-            <span>{showDataTable ? 'Hide Accessible Data Table' : 'View Accessible Data Table'}</span>
-          </button>
-        </div>
-
-        {airQuality.hourlyTrend.length > 0 ? (
-          <>
-            <div className="h-64 w-full" role="img" aria-label={`Line chart of hourly AQI and PM2.5 in ${airQuality.cityName}`}>
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart
-                  data={airQuality.hourlyTrend}
-                  margin={{ top: 10, right: 16, left: 0, bottom: 0 }}
-                >
-                  <defs>
-                    <linearGradient id="aqiFill" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#0D9488" stopOpacity={0.28} />
-                      <stop offset="95%" stopColor="#0D9488" stopOpacity={0.02} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
-                  <XAxis dataKey="hour" tick={{ fontSize: 12, fill: '#475569' }} />
-                  <YAxis tick={{ fontSize: 12, fill: '#475569' }} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: '#0F172A',
-                      borderColor: '#334155',
-                      borderRadius: '8px',
-                      color: '#F8FAFC',
-                      fontSize: '12px',
-                    }}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="aqi"
-                    name="US EPA AQI"
-                    stroke="#0D9488"
-                    strokeWidth={2.5}
-                    fill="url(#aqiFill)"
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="pm25"
-                    name="PM2.5 (µg/m³)"
-                    stroke="#0891B2"
-                    strokeWidth={2}
-                    fillOpacity={0}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-
-            {showDataTable && (
-              <div className="overflow-x-auto border border-slate-200 rounded-lg">
-                <table className="w-full text-left text-xs sm:text-sm">
-                  <caption className="sr-only">
-                    Hourly AQI, PM2.5, and PM10 readings for {airQuality.cityName}
-                  </caption>
-                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-600">
-                    <tr>
-                      <th scope="col" className="px-4 py-2.5 font-semibold">Hour</th>
-                      <th scope="col" className="px-4 py-2.5 font-semibold">US AQI</th>
-                      <th scope="col" className="px-4 py-2.5 font-semibold">PM2.5 (µg/m³)</th>
-                      <th scope="col" className="px-4 py-2.5 font-semibold">PM10 (µg/m³)</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200 font-mono tabular-nums">
-                    {airQuality.hourlyTrend.map((pt) => (
-                      <tr key={pt.hour} className="hover:bg-slate-50">
-                        <td className="px-4 py-2 text-slate-900 font-medium">{pt.hour}</td>
-                        <td className="px-4 py-2 text-slate-800">{pt.aqi}</td>
-                        <td className="px-4 py-2 text-slate-700">{pt.pm25}</td>
-                        <td className="px-4 py-2 text-slate-700">{pt.pm10}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </>
-        ) : (
-          <p className="text-sm text-slate-600 py-4">
-            Hourly diurnal trend data is unavailable for this location. Check your municipal air-quality agency for hourly updates.
-          </p>
-        )}
-
-        {/* Data Sources & Limitations Footer */}
-        <div className="pt-3 border-t border-slate-200 text-xs text-slate-600 space-y-1">
-          <div className="font-semibold text-slate-800">
-            Data Source & Limitations ({airQuality.methodology})
-          </div>
-          <ul className="list-disc pl-5 space-y-0.5">
-            {airQuality.dataLimitations.map((note, idx) => (
-              <li key={idx}>{note}</li>
-            ))}
-          </ul>
-        </div>
-      </section>
+      <DiurnalTrendCard airQuality={airQuality} />
     </div>
   );
 }

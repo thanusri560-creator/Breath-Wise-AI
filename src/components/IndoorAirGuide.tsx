@@ -319,8 +319,8 @@ export function IndoorAirGuide({
             <span>Monitoring & Incomplete-Input Notes</span>
           </div>
           <ul className="list-disc pl-5 space-y-1">
-            {guide.unknownDataWarnings.map((w, idx) => (
-              <li key={idx}>{w}</li>
+            {guide.unknownDataWarnings.map((warning) => (
+              <li key={warning}>{warning}</li>
             ))}
           </ul>
         </section>
@@ -328,9 +328,9 @@ export function IndoorAirGuide({
 
       {/* 5 Actionable Evidence-Based Indoor Cards */}
       <section aria-label="Indoor air quality recommendations" className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {guide.actions.map((action, idx) => (
+        {guide.actions.map((action) => (
           <article
-            key={`${action.category}-${idx}`}
+            key={`${action.category}-${action.benefitDimension}`}
             className="bg-white border border-slate-200 rounded-xl p-5 space-y-3"
           >
             <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-slate-200">

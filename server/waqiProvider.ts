@@ -130,7 +130,10 @@ export async function fetchLiveWaqiReading(
         ...(stale ? ['Observation timestamp is older than 3 hours and may be stale.'] : []),
       ],
     };
-  } catch {
+  } catch (err: unknown) {
+    if (!(err instanceof Error && err.name === 'AbortError')) {
+      console.warn('Live WAQI station lookup failed; falling back to Open-Meteo.');
+    }
     return null;
   } finally {
     clearTimeout(timeout);

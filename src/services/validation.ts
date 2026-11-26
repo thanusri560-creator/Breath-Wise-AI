@@ -99,14 +99,22 @@ const VALID_FILTRATIONS = new Set([
   'none',
 ]);
 
+function stripControlChars(input: string): string {
+  let result = '';
+  for (let i = 0; i < input.length; i += 1) {
+    const code = input.charCodeAt(i);
+    result += code <= 0x1f || code === 0x7f ? ' ' : input[i];
+  }
+  return result;
+}
+
 /**
  * Strips control characters, HTML angle brackets, and common prompt-injection override
  * patterns from untrusted user text or external sensor strings.
  */
 export function sanitizeUserText(input: string, maxLength = 300): string {
-  return input
+  return stripControlChars(input)
     .replace(/[<>]/g, '')
-    .replace(/[\u0000-\u001F\u007F]/g, ' ')
     .replace(/\b(ignore\s+previous\s+instructions|system\s+prompt|disregard\s+all\s+rules)\b/gi, '[filtered]')
     .trim()
     .slice(0, maxLength);

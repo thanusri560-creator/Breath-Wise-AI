@@ -260,8 +260,8 @@ export function FamilyProfile({
           Individual Daily Adjustments
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {familyPlan.individualRoutines.map((item, idx) => (
-            <article key={`${item.memberName}-${idx}`} className="p-4 rounded-lg bg-slate-50 border border-slate-200 space-y-2">
+          {familyPlan.individualRoutines.map((item) => (
+            <article key={`${item.memberName}-${item.role}`} className="p-4 rounded-lg bg-slate-50 border border-slate-200 space-y-2">
               <div className="flex items-center justify-between gap-2">
                 <div className="font-display font-bold text-sm text-slate-900">
                   {item.memberName}
@@ -280,8 +280,8 @@ export function FamilyProfile({
           <div className="space-y-2">
             <h4 className="font-display font-bold text-slate-900">Shared Household Activities</h4>
             <ul className="space-y-2 text-xs text-slate-700">
-              {familyPlan.sharedActivities.map((act, idx) => (
-                <li key={idx}>
+              {familyPlan.sharedActivities.map((act) => (
+                <li key={act.activity}>
                   <strong className="text-slate-900 block">{act.activity}</strong>
                   <span>{act.plan}</span>
                 </li>
@@ -292,8 +292,8 @@ export function FamilyProfile({
           <div className="space-y-2">
             <h4 className="font-display font-bold text-slate-900">Shared Indoor Air Practices</h4>
             <ul className="list-disc pl-4 space-y-1.5 text-xs text-slate-700">
-              {familyPlan.indoorAirPractices.map((p, idx) => (
-                <li key={idx}>{p}</li>
+              {familyPlan.indoorAirPractices.map((practice) => (
+                <li key={practice}>{practice}</li>
               ))}
             </ul>
           </div>
@@ -301,8 +301,8 @@ export function FamilyProfile({
           <div className="space-y-2">
             <h4 className="font-display font-bold text-slate-900">Sustainable Household Logistics</h4>
             <ul className="list-disc pl-4 space-y-1.5 text-xs text-slate-700">
-              {familyPlan.sustainableHouseholdChoices.map((c, idx) => (
-                <li key={idx}>{c}</li>
+              {familyPlan.sustainableHouseholdChoices.map((choice) => (
+                <li key={choice}>{choice}</li>
               ))}
             </ul>
           </div>

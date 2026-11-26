@@ -18,18 +18,18 @@ export function MarkdownProse({ text }: MarkdownProseProps) {
     if (listItems.length === 0) return;
     blocks.push(
       <ul key={`list-${keyBase}`} className="list-disc pl-5 space-y-1.5 text-sm text-slate-700 leading-relaxed">
-        {listItems.map((item, idx) => (
-          <li key={idx}>{renderInline(item)}</li>
+        {listItems.map((item, itemOffset) => (
+          <li key={`li-${keyBase}-${itemOffset}-${item.slice(0, 24)}`}>{renderInline(item)}</li>
         ))}
       </ul>
     );
     listItems = [];
   };
 
-  lines.forEach((rawLine, idx) => {
+  lines.forEach((rawLine, lineIdx) => {
     const line = rawLine.trim();
     if (!line) {
-      flushList(idx);
+      flushList(lineIdx);
       return;
     }
 
@@ -38,11 +38,11 @@ export function MarkdownProse({ text }: MarkdownProseProps) {
       return;
     }
 
-    flushList(idx);
+    flushList(lineIdx);
 
     if (line.startsWith('### ')) {
       blocks.push(
-        <h4 key={`h4-${idx}`} className="font-display text-sm font-bold text-slate-900 pt-1">
+        <h4 key={`h4-${lineIdx}-${line.slice(4, 24)}`} className="font-display text-sm font-bold text-slate-900 pt-1">
           {renderInline(line.slice(4))}
         </h4>
       );
@@ -51,7 +51,7 @@ export function MarkdownProse({ text }: MarkdownProseProps) {
 
     if (line.startsWith('## ') || line.startsWith('# ')) {
       blocks.push(
-        <h3 key={`h3-${idx}`} className="font-display text-base font-bold text-slate-900 pt-1">
+        <h3 key={`h3-${lineIdx}-${line.slice(2, 24)}`} className="font-display text-base font-bold text-slate-900 pt-1">
           {renderInline(line.replace(/^#+\s*/, ''))}
         </h3>
       );
@@ -59,7 +59,7 @@ export function MarkdownProse({ text }: MarkdownProseProps) {
     }
 
     blocks.push(
-      <p key={`p-${idx}`} className="text-sm text-slate-700 leading-relaxed">
+      <p key={`p-${lineIdx}-${line.slice(0, 24)}`} className="text-sm text-slate-700 leading-relaxed">
         {renderInline(line)}
       </p>
     );
@@ -72,21 +72,24 @@ export function MarkdownProse({ text }: MarkdownProseProps) {
 
 function renderInline(line: string): React.ReactNode[] {
   const tokens = line.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g);
-  return tokens.map((token, i) => {
+  let charOffset = 0;
+  return tokens.map((token) => {
+    const tokenKey = `${charOffset}-${token.slice(0, 16)}`;
+    charOffset += token.length;
     if (token.startsWith('**') && token.endsWith('**') && token.length > 4) {
       return (
-        <strong key={i} className="font-semibold text-slate-900">
+        <strong key={`b-${tokenKey}`} className="font-semibold text-slate-900">
           {token.slice(2, -2)}
         </strong>
       );
     }
     if (token.startsWith('*') && token.endsWith('*') && token.length > 2) {
       return (
-        <em key={i} className="italic text-slate-600">
+        <em key={`em-${tokenKey}`} className="italic text-slate-600">
           {token.slice(1, -1)}
         </em>
       );
     }
-    return <React.Fragment key={i}>{token}</React.Fragment>;
+    return <React.Fragment key={`t-${tokenKey}`}>{token}</React.Fragment>;
   });
 }

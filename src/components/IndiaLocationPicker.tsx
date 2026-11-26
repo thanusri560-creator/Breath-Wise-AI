@@ -28,41 +28,39 @@ export function IndiaLocationPicker({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
-  const [searching, setSearching] = useState(false);
-  const [results, setResults] = useState<LocationSearchResult[]>([]);
+  const [searchState, setSearchState] = useState<{
+    query: string;
+    results: LocationSearchResult[];
+  }>({ query: '', results: [] });
   const [activeIndex, setActiveIndex] = useState<number>(-1);
 
   const debouncedQuery = useDebounce(query.trim(), 250);
+  const isQueryActive = debouncedQuery.length >= 2;
+  const searching = isQueryActive && searchState.query !== debouncedQuery;
+  const results = isQueryActive && searchState.query === debouncedQuery ? searchState.results : [];
 
   // Featured Indian quick-pick cities shown before the user types
   const indianPresets = cities.filter((c) => c.region.includes('India'));
 
   useEffect(() => {
+    if (!isQueryActive) return;
     let active = true;
-    if (debouncedQuery.length < 2) {
-      setResults([]);
-      setSearching(false);
-      return;
-    }
 
     async function runSearch() {
-      setSearching(true);
       const res = await breathewiseApiClient.searchIndiaLocations(debouncedQuery);
       if (!active) return;
-      if (res.ok && res.data?.results) {
-        setResults(res.data.results);
-      } else {
-        setResults([]);
-      }
+      setSearchState({
+        query: debouncedQuery,
+        results: res.ok && res.data?.results ? res.data.results : [],
+      });
       setActiveIndex(0);
-      setSearching(false);
     }
 
     void runSearch();
     return () => {
       active = false;
     };
-  }, [debouncedQuery]);
+  }, [debouncedQuery, isQueryActive]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -163,7 +161,7 @@ export function IndiaLocationPicker({
             type="button"
             onClick={() => {
               setQuery('');
-              setResults([]);
+              setSearchState({ query: '', results: [] });
             }}
             aria-label="Clear location search"
             className="absolute right-2 p-1 text-slate-400 hover:text-slate-700 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"

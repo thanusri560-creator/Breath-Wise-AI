@@ -54,11 +54,14 @@ async function fetchJson<T>(
     }
 
     return { ok: true, status: res.status, data: parsed };
-  } catch {
+  } catch (err: unknown) {
+    const detail = err instanceof Error && err.name === 'AbortError'
+      ? 'Request timed out. Offline deterministic engine remains active.'
+      : 'Unable to reach BreatheWise AI server. Offline deterministic engine remains active.';
     return {
       ok: false,
       status: 0,
-      error: 'Unable to reach BreatheWise AI server. Offline deterministic engine remains active.',
+      error: detail,
     };
   }
 }

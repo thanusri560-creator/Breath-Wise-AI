@@ -133,7 +133,10 @@ export async function searchIndiaLocations(rawQuery: string): Promise<LocationSe
     }
     searchCache.set(cacheKey, { results, expiresAt: Date.now() + SEARCH_CACHE_TTL_MS });
     return results;
-  } catch {
+  } catch (err: unknown) {
+    if (!(err instanceof Error && err.name === 'AbortError')) {
+      console.warn('India geocoding lookup unavailable, returning empty match list.');
+    }
     return [];
   } finally {
     clearTimeout(timeout);
@@ -162,18 +165,24 @@ export async function fetchAirQualityForCity(
 
   const cleanCity = sanitizeLocationInput(normalized.city) || 'New Delhi';
   const cleanState = normalized.state ? sanitizeLocationInput(normalized.state) : '';
-  const hasValidCoords =
+  const validLat =
     typeof normalized.lat === 'number' &&
-    typeof normalized.lon === 'number' &&
     Number.isFinite(normalized.lat) &&
-    Number.isFinite(normalized.lon) &&
     normalized.lat >= -90 &&
-    normalized.lat <= 90 &&
+    normalized.lat <= 90
+      ? normalized.lat
+      : undefined;
+  const validLon =
+    typeof normalized.lon === 'number' &&
+    Number.isFinite(normalized.lon) &&
     normalized.lon >= -180 &&
-    normalized.lon <= 180;
+    normalized.lon <= 180
+      ? normalized.lon
+      : undefined;
+  const hasValidCoords = validLat !== undefined && validLon !== undefined;
 
   const cacheKey = hasValidCoords
-    ? `coords:${normalized.lat!.toFixed(2)},${normalized.lon!.toFixed(2)}:${cleanCity.toLowerCase()}`
+    ? `coords:${validLat.toFixed(2)},${validLon.toFixed(2)}:${cleanCity.toLowerCase()}`
     : `city:${cleanCity.toLowerCase()}:${cleanState.toLowerCase()}`;
 
   const cached = aqiCache.get(cacheKey);
@@ -182,17 +191,18 @@ export async function fetchAirQualityForCity(
   }
 
   let reading: AirQualityReading | null = null;
+  const waqiToken = process.env.WAQI_API_TOKEN?.trim();
 
-  if (hasWaqiToken() && !hasValidCoords) {
-    reading = await fetchLiveWaqiReading(cleanCity, process.env.WAQI_API_TOKEN as string);
+  if (hasWaqiToken() && waqiToken && !hasValidCoords) {
+    reading = await fetchLiveWaqiReading(cleanCity, waqiToken);
   }
 
   if (!reading || reading.aqi === null) {
     reading = await fetchLiveOpenMeteoReading(
       cleanCity,
       cleanState,
-      hasValidCoords ? normalized.lat : undefined,
-      hasValidCoords ? normalized.lon : undefined
+      validLat,
+      validLon
     );
   }
 
@@ -248,7 +258,10 @@ async function resolveLocationForOpenMeteo(
       latitude: item.latitude,
       longitude: item.longitude,
     };
-  } catch {
+  } catch (err: unknown) {
+    if (!(err instanceof Error && err.name === 'AbortError')) {
+      console.warn('Global geocoding fallback failed for requested location.');
+    }
     return null;
   } finally {
     clearTimeout(timeout);
@@ -387,7 +400,10 @@ async function fetchLiveOpenMeteoReading(
         'Always verify severe local smog alerts against CPCB (Central Pollution Control Board) or your municipal public-health agency.',
       ],
     };
-  } catch {
+  } catch (err: unknown) {
+    if (!(err instanceof Error && err.name === 'AbortError')) {
+      console.warn('Live Open-Meteo telemetry unavailable; falling back to verified demo reading.');
+    }
     return null;
   } finally {
     clearTimeout(timeout);

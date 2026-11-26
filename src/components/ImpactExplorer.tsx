@@ -401,16 +401,16 @@ export function ImpactExplorer({
               <div>
                 <h4 className="font-semibold text-slate-900 mb-1.5">Model Assumptions</h4>
                 <ul className="list-disc pl-4 space-y-1">
-                  {simResult.impactResult.assumptions.map((a, idx) => (
-                    <li key={idx}>{a}</li>
+                  {simResult.impactResult.assumptions.map((assumption) => (
+                    <li key={assumption}>{assumption}</li>
                   ))}
                 </ul>
               </div>
               <div>
                 <h4 className="font-semibold text-slate-900 mb-1.5">Uncertainties & Limitations</h4>
                 <ul className="list-disc pl-4 space-y-1">
-                  {simResult.impactResult.uncertainties.map((u, idx) => (
-                    <li key={idx}>{u}</li>
+                  {simResult.impactResult.uncertainties.map((uncertainty) => (
+                    <li key={uncertainty}>{uncertainty}</li>
                   ))}
                 </ul>
               </div>
