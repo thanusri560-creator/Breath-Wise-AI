@@ -9,6 +9,7 @@ import type {
   FamilyMember,
   IndoorEnvironmentInput,
   IndoorGuideResult,
+  LocationSearchResult,
   LowEmissionPlanResult,
   UserProfile,
 } from '../domain/airQualityTypes';
@@ -62,12 +63,17 @@ export function useBreatheWise() {
   // Security: keep HMAC-signed Bearer token strictly in memory (never in localStorage).
   const [sessionToken, setSessionToken] = useState<string | null>(null);
   const [geminiConfigured, setGeminiConfigured] = useState<boolean>(true);
-  const [liveAqiConfigured, setLiveAqiConfigured] = useState<boolean>(false);
+  const [liveAqiConfigured, setLiveAqiConfigured] = useState<boolean>(true);
 
   const [cities, setCities] = useState<CityOption[]>(() => AirQualityDataService.listDemoCities());
   const [profile, setProfile] = useState<UserProfile>(initial.profile);
   const [indoor, setIndoor] = useState<IndoorEnvironmentInput>(initial.indoor);
   const [family, setFamily] = useState<FamilyMember[]>(initial.family);
+  const [selectedCoords, setSelectedCoords] = useState<{
+    state?: string;
+    lat?: number;
+    lon?: number;
+  } | null>(null);
 
   const [airQuality, setAirQuality] = useState<AirQualityReading>(() =>
     AirQualityDataService.getDemoReading(initial.profile.manualLocationLabel || initial.profile.cityId)
@@ -89,7 +95,7 @@ export function useBreatheWise() {
       id: 'welcome-msg',
       role: 'assistant',
       content:
-        'Welcome to **BreatheWise AI**. Ask any question about today’s urban air quality, indoor ventilation timing, HEPA filtration, cooking fumes, or practical lower-emission travel swaps.\n\n*Guidance is non-diagnostic and tailored to your active city and household profile.*',
+        'Welcome to **BreatheWise AI**. Ask any question about today’s urban air quality anywhere in India, indoor ventilation timing, HEPA filtration, cooking fumes, or practical lower-emission travel swaps.\n\n*Guidance is non-diagnostic and tailored to your active city and household profile.*',
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     },
   ]);
@@ -125,26 +131,33 @@ export function useBreatheWise() {
     };
   }, []);
 
-  // Fetch environmental telemetry when active city/location changes
-  const fetchCityTelemetry = useCallback(async (cityQuery: string) => {
-    const clean = sanitizeLocationInput(cityQuery) || 'new-delhi';
-    setLoadingAir(true);
-    setAirError(null);
-    const res = await breathewiseApiClient.getAirQuality(clean);
-    if (res.ok && res.data?.reading) {
-      setAirQuality(res.data.reading);
-    } else {
-      // Fall back to deterministic demo dataset while showing a transparent notice
-      setAirQuality(AirQualityDataService.getDemoReading(clean));
-      setAirError(res.error || 'Could not reach server environmental feed; showing local Demo Mode dataset.');
-    }
-    setLoadingAir(false);
-  }, []);
+  // Fetch live environmental telemetry when active city/location changes
+  const fetchCityTelemetry = useCallback(
+    async (
+      cityQuery: string,
+      opts?: { state?: string; lat?: number; lon?: number }
+    ) => {
+      const clean = sanitizeLocationInput(cityQuery) || 'New Delhi';
+      setLoadingAir(true);
+      setAirError(null);
+      const res = await breathewiseApiClient.getAirQuality(clean, opts);
+      if (res.ok && res.data?.reading) {
+        setAirQuality(res.data.reading);
+      } else {
+        setAirQuality(AirQualityDataService.getDemoReading(clean));
+        setAirError(
+          res.error || 'Could not reach live environmental feed; showing Demo Mode sample dataset.'
+        );
+      }
+      setLoadingAir(false);
+    },
+    []
+  );
 
   useEffect(() => {
     const query = profile.manualLocationLabel.trim() || profile.cityId;
-    void fetchCityTelemetry(query);
-  }, [profile.cityId, profile.manualLocationLabel, fetchCityTelemetry]);
+    void fetchCityTelemetry(query, selectedCoords ?? undefined);
+  }, [profile.cityId, profile.manualLocationLabel, selectedCoords, fetchCityTelemetry]);
 
   // Persist workspace safely to localStorage + debounced authenticated server sync
   useEffect(() => {
@@ -207,12 +220,27 @@ export function useBreatheWise() {
 
   // Profile & location mutators
   const selectPresetCity = useCallback((cityId: string) => {
+    setSelectedCoords(null);
     setProfile((prev) => ({ ...prev, cityId, manualLocationLabel: '' }));
+  }, []);
+
+  const selectIndiaLocation = useCallback((loc: LocationSearchResult) => {
+    setSelectedCoords({
+      state: loc.state,
+      lat: loc.latitude,
+      lon: loc.longitude,
+    });
+    setProfile((prev) => ({
+      ...prev,
+      cityId: loc.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+      manualLocationLabel: loc.name,
+    }));
   }, []);
 
   const setManualLocation = useCallback((rawLocation: string) => {
     const clean = sanitizeLocationInput(rawLocation);
     if (!clean) return;
+    setSelectedCoords(null);
     setProfile((prev) => ({ ...prev, manualLocationLabel: clean }));
   }, []);
 
@@ -416,8 +444,13 @@ export function useBreatheWise() {
     loadingAir,
     airError,
     selectPresetCity,
+    selectIndiaLocation,
     setManualLocation,
-    refreshAirQuality: () => fetchCityTelemetry(profile.manualLocationLabel || profile.cityId),
+    refreshAirQuality: () =>
+      fetchCityTelemetry(
+        profile.manualLocationLabel || profile.cityId,
+        selectedCoords ?? undefined
+      ),
     dailyPlan: activeDailyPlan,
     indoorGuide: activeIndoorGuide,
     lowEmissionPlan: activeLowEmission,

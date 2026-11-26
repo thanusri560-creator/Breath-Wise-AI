@@ -12,6 +12,7 @@ import type {
   FiltrationType,
   HouseholdType,
   LifestyleType,
+  LocationSearchResult,
   UserProfile,
 } from '../domain/airQualityTypes';
 import {
@@ -21,12 +22,14 @@ import {
   LIFESTYLE_LABELS,
 } from '../data/breathewiseDefaults';
 import { useDebounce } from '../hooks/useDebounce';
+import { IndiaLocationPicker } from './IndiaLocationPicker';
 
 interface OnboardingPanelProps {
   profile: UserProfile;
   cities: CityOption[];
   onUpdateProfile: (patch: Partial<UserProfile>) => void;
   onSelectPresetCity: (cityId: string) => void;
+  onSelectLocation: (loc: LocationSearchResult) => void;
   onSetManualLocation: (label: string) => void;
   onFinish: (target: BreatheWisePage) => void;
 }
@@ -36,6 +39,7 @@ export function OnboardingPanel({
   cities,
   onUpdateProfile,
   onSelectPresetCity,
+  onSelectLocation,
   onSetManualLocation,
   onFinish,
 }: OnboardingPanelProps) {
@@ -101,9 +105,11 @@ export function OnboardingPanel({
           ].map((tab) => (
             <button
               key={tab.id}
+              id={`onb-tab-${tab.id}`}
               type="button"
               role="tab"
               aria-selected={step === tab.id}
+              aria-controls={`onb-panel-${tab.id}`}
               onClick={() => setStep(tab.id)}
               className={`px-3 py-2.5 rounded-lg text-xs sm:text-sm font-semibold border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 ${
                 step === tab.id
@@ -117,11 +123,39 @@ export function OnboardingPanel({
         </div>
 
         {step === 1 && (
-          <div role="tabpanel" aria-label="Location and Lifestyle" className="space-y-5">
+          <div
+            id="onb-panel-1"
+            role="tabpanel"
+            aria-labelledby="onb-tab-1"
+            aria-label="Location and Lifestyle"
+            className="space-y-5"
+          >
+            <div className="space-y-2">
+              <div className="text-xs font-semibold uppercase tracking-wider text-slate-600">
+                Search Any City, Town, or District Across India (Live AQI)
+              </div>
+              <IndiaLocationPicker
+                currentCityName={profile.manualLocationLabel || profile.cityId}
+                cities={cities}
+                onSelectLocation={(loc) => {
+                  setManualInput(loc.name);
+                  onSelectLocation(loc);
+                  setSavedNotice(
+                    `Selected live location: ${loc.name}${loc.state ? `, ${loc.state}` : ''}. Fetching current AQI & meteorology.`
+                  );
+                }}
+                onSelectPresetCity={(id) => {
+                  setManualInput('');
+                  onSelectPresetCity(id);
+                  setSavedNotice(`Switched active city to ${id.replace(/-/g, ' ')}.`);
+                }}
+              />
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div>
                 <label htmlFor="onb-city" className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
-                  Select Featured Winter Smog City
+                  Or Pick a Featured City Preset
                 </label>
                 <select
                   id="onb-city"
@@ -134,7 +168,7 @@ export function OnboardingPanel({
                 >
                   {cities.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.name} — {c.region} (AQI {c.aqi})
+                      {c.name} — {c.region}
                     </option>
                   ))}
                 </select>
@@ -142,7 +176,7 @@ export function OnboardingPanel({
 
               <div>
                 <label htmlFor="onb-manual-city" className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
-                  Or Enter Any City Manually (Optional)
+                  Or Enter Any Location Manually (Optional)
                 </label>
                 <div className="flex gap-2">
                   <input
@@ -150,7 +184,7 @@ export function OnboardingPanel({
                     type="text"
                     value={manualInput}
                     onChange={(e) => setManualInput(e.target.value)}
-                    placeholder="e.g. Denver, Beijing, Warsaw"
+                    placeholder="e.g. Coimbatore, Indore, Shimla, Surat"
                     className="flex-1 h-10 px-3 text-sm bg-slate-50 border border-slate-300 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
                   />
                   <button
@@ -217,7 +251,13 @@ export function OnboardingPanel({
         )}
 
         {step === 2 && (
-          <div className="space-y-5">
+          <div
+            id="onb-panel-2"
+            role="tabpanel"
+            aria-labelledby="onb-tab-2"
+            aria-label="Commute and Activities"
+            className="space-y-5"
+          >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div>
                 <label htmlFor="onb-commute" className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
@@ -282,7 +322,13 @@ export function OnboardingPanel({
         )}
 
         {step === 3 && (
-          <div className="space-y-5">
+          <div
+            id="onb-panel-3"
+            role="tabpanel"
+            aria-labelledby="onb-tab-3"
+            aria-label="Household and Filtration"
+            className="space-y-5"
+          >
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label htmlFor="onb-household" className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">

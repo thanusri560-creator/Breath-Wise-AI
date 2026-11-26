@@ -112,6 +112,16 @@ export interface CityOption {
   scenarioLabel: string;
 }
 
+export interface LocationSearchResult {
+  id: string;
+  name: string;
+  state: string;
+  district?: string;
+  country: string;
+  latitude: number;
+  longitude: number;
+}
+
 export interface ActivitySlot {
   id: string;
   timeBlock: 'Morning' | 'Afternoon' | 'Evening';

@@ -9,9 +9,6 @@ import type {
   UserProfile,
 } from '../domain/airQualityTypes';
 
-export const SKYLINE_IMAGE_URL =
-  '/src/assets/images/urban_winter_smog_skyline_1795710040171.jpg';
-
 export const LIFESTYLE_LABELS: Record<LifestyleType, string> = {
   parent: 'Parent / Caregiver',
   office_worker: 'Office / Hybrid Worker',

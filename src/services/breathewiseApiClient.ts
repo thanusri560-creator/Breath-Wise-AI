@@ -7,6 +7,7 @@ import type {
   FamilyMember,
   IndoorEnvironmentInput,
   IndoorGuideResult,
+  LocationSearchResult,
   LowEmissionPlanResult,
   UserProfile,
 } from '../domain/airQualityTypes';
@@ -77,9 +78,24 @@ export const breathewiseApiClient = {
     return fetchJson<{ cities: CityOption[]; liveAqiConfigured: boolean }>('/api/cities');
   },
 
-  getAirQuality(city: string) {
+  searchIndiaLocations(query: string) {
+    return fetchJson<{ results: LocationSearchResult[] }>(
+      `/api/locations/search?q=${encodeURIComponent(query)}`
+    );
+  },
+
+  getAirQuality(
+    city: string,
+    opts?: { state?: string; lat?: number; lon?: number }
+  ) {
+    const params = new URLSearchParams({ city });
+    if (opts?.state) params.set('state', opts.state);
+    if (typeof opts?.lat === 'number' && typeof opts?.lon === 'number') {
+      params.set('lat', String(opts.lat));
+      params.set('lon', String(opts.lon));
+    }
     return fetchJson<{ reading: AirQualityReading }>(
-      `/api/air-quality?city=${encodeURIComponent(city)}`
+      `/api/air-quality?${params.toString()}`
     );
   },
 

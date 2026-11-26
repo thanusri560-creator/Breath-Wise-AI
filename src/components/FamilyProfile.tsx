@@ -41,21 +41,29 @@ export function FamilyProfile({
   const [ageGroup, setAgeGroup] = useState<FamilyMember['ageGroup']>('Adult (18–64)');
   const [commute, setCommute] = useState<CommuteType>('public_transit');
   const [keyActivities, setKeyActivities] = useState('');
+  const [rosterNotice, setRosterNotice] = useState<string | null>(null);
 
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    const trimmedName = name.trim();
+    if (!trimmedName) return;
     onAddMember({
-      name: name.trim(),
+      name: trimmedName,
       role: role.trim() || 'Household Member',
       ageGroup,
       commute,
       keyActivities: keyActivities.trim() || 'Daily commute and neighborhood errands',
       activityPreference: 'Flexible indoor/outdoor routine',
     });
+    setRosterNotice(`Added ${trimmedName} to the household air action plan.`);
     setName('');
     setRole('');
     setKeyActivities('');
+  };
+
+  const handleRemove = (member: FamilyMember) => {
+    onRemoveMember(member.id);
+    setRosterNotice(`Removed ${member.name} from the household air action plan.`);
   };
 
   return (
@@ -105,6 +113,16 @@ export function FamilyProfile({
             Household Members ({members.length})
           </h3>
 
+          {rosterNotice && (
+            <div
+              role="status"
+              aria-live="polite"
+              className="px-3 py-2 rounded-lg bg-teal-50 border border-teal-200 text-xs text-teal-900"
+            >
+              {rosterNotice}
+            </div>
+          )}
+
           <div className="divide-y divide-slate-200">
             {members.map((member) => (
               <div
@@ -128,7 +146,7 @@ export function FamilyProfile({
                 {members.length > 1 && (
                   <button
                     type="button"
-                    onClick={() => onRemoveMember(member.id)}
+                    onClick={() => handleRemove(member)}
                     aria-label={`Remove ${member.name} from household`}
                     className="p-2 text-slate-400 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-600"
                   >

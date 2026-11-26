@@ -17,8 +17,10 @@ import type {
   AirQualityReading,
   BreatheWisePage,
   CityOption,
+  LocationSearchResult,
 } from '../domain/airQualityTypes';
 import { AQIIndicator } from './AQIIndicator';
+import { IndiaLocationPicker } from './IndiaLocationPicker';
 
 interface BreatheWiseLayoutProps {
   activePage: BreatheWisePage;
@@ -27,6 +29,7 @@ interface BreatheWiseLayoutProps {
   cities: CityOption[];
   selectedCityId: string;
   onSelectCity: (cityId: string) => void;
+  onSelectLocation: (loc: LocationSearchResult) => void;
   liveAqiConfigured: boolean;
   children: React.ReactNode;
 }
@@ -55,8 +58,8 @@ export function BreatheWiseLayout({
   onSelectPage,
   airQuality,
   cities,
-  selectedCityId,
   onSelectCity,
+  onSelectLocation,
   liveAqiConfigured,
   children,
 }: BreatheWiseLayoutProps) {
@@ -241,21 +244,13 @@ export function BreatheWiseLayout({
           </div>
 
           <div className="flex items-center gap-3">
-            <label htmlFor="header-city-select" className="sr-only">
-              Select urban monitoring scenario
-            </label>
-            <select
-              id="header-city-select"
-              value={selectedCityId}
-              onChange={(e) => onSelectCity(e.target.value)}
-              className="h-9 px-3 text-xs sm:text-sm font-medium bg-slate-50 border border-slate-300 rounded-lg text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
-            >
-              {cities.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name} — AQI {c.aqi} ({c.scenarioLabel})
-                </option>
-              ))}
-            </select>
+            <IndiaLocationPicker
+              currentCityName={airQuality.cityName}
+              cities={cities}
+              onSelectLocation={onSelectLocation}
+              onSelectPresetCity={onSelectCity}
+              compact
+            />
 
             <button
               type="button"

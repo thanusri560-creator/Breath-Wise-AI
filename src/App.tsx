@@ -22,6 +22,7 @@ export default function App() {
       cities={bw.cities}
       selectedCityId={bw.profile.cityId}
       onSelectCity={bw.selectPresetCity}
+      onSelectLocation={bw.selectIndiaLocation}
       liveAqiConfigured={bw.liveAqiConfigured}
     >
       <ErrorBoundary>
@@ -116,6 +117,7 @@ export default function App() {
             cities={bw.cities}
             onUpdateProfile={bw.updateProfile}
             onSelectPresetCity={bw.selectPresetCity}
+            onSelectLocation={bw.selectIndiaLocation}
             onSetManualLocation={bw.setManualLocation}
             onFinish={bw.setActivePage}
           />

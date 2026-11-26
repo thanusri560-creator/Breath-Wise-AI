@@ -3,7 +3,6 @@ import {
   AlertTriangle,
   CheckCircle2,
   RotateCcw,
-  Sliders,
   Sparkles,
   Table,
 } from 'lucide-react';
@@ -34,6 +33,7 @@ import {
 } from '../data/breathewiseDefaults';
 import { RecommendationEngine } from '../services/RecommendationEngine';
 import { AccessibleModal } from './AccessibleModal';
+import { SimulationControlsForm } from './SimulationControlsForm';
 import { StatusIndicator } from './StatusIndicator';
 
 interface ImpactExplorerProps {
@@ -193,244 +193,21 @@ export function ImpactExplorer({
       {/* Main Split Workspace: Controls (Left) + Live Comparison & Conflicts (Right) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left: Simulation Inputs */}
-        <section
-          aria-labelledby="sim-controls-heading"
-          className="lg:col-span-5 bg-white border border-slate-200 rounded-xl p-6 space-y-5"
-        >
-          <div className="flex items-center gap-2 pb-3 border-b border-slate-200">
-            <Sliders className="w-4 h-4 text-teal-700" />
-            <h3 id="sim-controls-heading" className="font-display text-base font-bold text-slate-900">
-              What-If Scenario Parameters
-            </h3>
-          </div>
-
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label
-                  htmlFor="sim-aqi-override"
-                  className="block text-xs font-semibold text-slate-700 mb-1"
-                >
-                  Simulate AQI (0–500)
-                </label>
-                <input
-                  id="sim-aqi-override"
-                  type="number"
-                  min={0}
-                  max={500}
-                  placeholder={airQuality.aqi !== null ? `Current: ${airQuality.aqi}` : 'e.g. 260'}
-                  value={aqiOverride}
-                  onChange={(e) => setAqiOverride(e.target.value)}
-                  className="w-full h-9 px-3 text-sm font-mono tabular-nums bg-slate-50 border border-slate-300 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
-                />
-              </div>
-
-              <div>
-                <label
-                  htmlFor="sim-household-size"
-                  className="block text-xs font-semibold text-slate-700 mb-1"
-                >
-                  Household Size
-                </label>
-                <input
-                  id="sim-household-size"
-                  type="number"
-                  min={1}
-                  max={20}
-                  value={householdSize}
-                  onChange={(e) => setHouseholdSize(Number(e.target.value))}
-                  className="w-full h-9 px-3 text-sm font-mono tabular-nums bg-slate-50 border border-slate-300 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="sim-commute-mode" className="block text-xs font-semibold text-slate-700 mb-1">
-                Primary Commute Mode
-              </label>
-              <select
-                id="sim-commute-mode"
-                value={commuteMode}
-                onChange={(e) => setCommuteMode(e.target.value as CommuteType)}
-                className="w-full h-9 px-3 text-sm bg-slate-50 border border-slate-300 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
-              >
-                {(Object.keys(COMMUTE_LABELS) as CommuteType[]).map((k) => (
-                  <option key={k} value={k}>
-                    {COMMUTE_LABELS[k]}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label htmlFor="sim-filtration" className="block text-xs font-semibold text-slate-700 mb-1">
-                Indoor Filtration Setup
-              </label>
-              <select
-                id="sim-filtration"
-                value={filtration}
-                onChange={(e) => setFiltration(e.target.value as FiltrationType)}
-                className="w-full h-9 px-3 text-sm bg-slate-50 border border-slate-300 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
-              >
-                {(Object.keys(FILTRATION_LABELS) as FiltrationType[]).map((k) => (
-                  <option key={k} value={k}>
-                    {FILTRATION_LABELS[k]}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="pt-3 border-t border-slate-200 space-y-3">
-              <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                Weekly Travel Swaps (Emissions Model)
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label htmlFor="sim-baseline-trips" className="block text-xs text-slate-700 mb-1">
-                    Baseline Car Trips / Wk
-                  </label>
-                  <input
-                    id="sim-baseline-trips"
-                    type="number"
-                    min={0}
-                    max={40}
-                    value={scenario.baselineCarTripsPerWeek}
-                    onChange={(e) =>
-                      setScenario((s) => ({
-                        ...s,
-                        baselineCarTripsPerWeek: Number(e.target.value),
-                      }))
-                    }
-                    className="w-full h-9 px-3 text-sm font-mono tabular-nums bg-slate-50 border border-slate-300 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="sim-trip-km" className="block text-xs text-slate-700 mb-1">
-                    Avg Trip Distance (km)
-                  </label>
-                  <input
-                    id="sim-trip-km"
-                    type="number"
-                    min={0}
-                    max={200}
-                    value={scenario.avgTripDistanceKm}
-                    onChange={(e) =>
-                      setScenario((s) => ({
-                        ...s,
-                        avgTripDistanceKm: Number(e.target.value),
-                      }))
-                    }
-                    className="w-full h-9 px-3 text-sm font-mono tabular-nums bg-slate-50 border border-slate-300 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-2.5">
-                <div>
-                  <label htmlFor="sim-transit-swaps" className="block text-[11px] text-slate-700 mb-1">
-                    To Transit
-                  </label>
-                  <input
-                    id="sim-transit-swaps"
-                    type="number"
-                    min={0}
-                    max={30}
-                    value={scenario.carTripsReplacedWithTransit}
-                    onChange={(e) =>
-                      setScenario((s) => ({
-                        ...s,
-                        carTripsReplacedWithTransit: Number(e.target.value),
-                      }))
-                    }
-                    className="w-full h-9 px-2.5 text-sm font-mono tabular-nums bg-slate-50 border border-slate-300 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="sim-carpool-swaps" className="block text-[11px] text-slate-700 mb-1">
-                    To Carpool
-                  </label>
-                  <input
-                    id="sim-carpool-swaps"
-                    type="number"
-                    min={0}
-                    max={30}
-                    value={scenario.carTripsReplacedWithCarpool}
-                    onChange={(e) =>
-                      setScenario((s) => ({
-                        ...s,
-                        carTripsReplacedWithCarpool: Number(e.target.value),
-                      }))
-                    }
-                    className="w-full h-9 px-2.5 text-sm font-mono tabular-nums bg-slate-50 border border-slate-300 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="sim-eliminated-trips" className="block text-[11px] text-slate-700 mb-1">
-                    Eliminated
-                  </label>
-                  <input
-                    id="sim-eliminated-trips"
-                    type="number"
-                    min={0}
-                    max={30}
-                    value={scenario.unnecessaryCarTripsEliminated}
-                    onChange={(e) =>
-                      setScenario((s) => ({
-                        ...s,
-                        unnecessaryCarTripsEliminated: Number(e.target.value),
-                      }))
-                    }
-                    className="w-full h-9 px-2.5 text-sm font-mono tabular-nums bg-slate-50 border border-slate-300 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="pt-3 border-t border-slate-200 space-y-2.5">
-              <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                Personal Exposure & Activity Preferences
-              </div>
-
-              <label className="flex items-start gap-2.5 text-xs text-slate-700 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={scenario.shiftOutdoorExerciseOffPeak}
-                  onChange={(e) =>
-                    setScenario((s) => ({ ...s, shiftOutdoorExerciseOffPeak: e.target.checked }))
-                  }
-                  className="mt-0.5 accent-teal-700"
-                />
-                <span>Shift outdoor workouts off-peak or indoors during severe smog</span>
-              </label>
-
-              <label className="flex items-start gap-2.5 text-xs text-slate-700 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={scenario.improveIndoorFiltration}
-                  onChange={(e) =>
-                    setScenario((s) => ({ ...s, improveIndoorFiltration: e.target.checked }))
-                  }
-                  className="mt-0.5 accent-teal-700"
-                />
-                <span>Run mechanical HEPA / MERV-13 filtration & kitchen exhaust</span>
-              </label>
-
-              <label className="flex items-start gap-2.5 text-xs text-slate-700 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={keepOutdoorHighExertion}
-                  onChange={(e) => setKeepOutdoorHighExertion(e.target.checked)}
-                  className="mt-0.5 accent-rose-600"
-                />
-                <span>
-                  Force vigorous outdoor exercise regardless of smog{' '}
-                  <span className="text-slate-500">(tests conflict detection)</span>
-                </span>
-              </label>
-            </div>
-          </div>
-        </section>
+        <SimulationControlsForm
+          currentAqi={airQuality.aqi}
+          aqiOverride={aqiOverride}
+          householdSize={householdSize}
+          commuteMode={commuteMode}
+          filtration={filtration}
+          keepOutdoorHighExertion={keepOutdoorHighExertion}
+          scenario={scenario}
+          onChangeAqiOverride={setAqiOverride}
+          onChangeHouseholdSize={setHouseholdSize}
+          onChangeCommuteMode={setCommuteMode}
+          onChangeFiltration={setFiltration}
+          onChangeKeepOutdoorHighExertion={setKeepOutdoorHighExertion}
+          onUpdateScenario={setScenario}
+        />
 
         {/* Right: Feasibility Verdict, Conflicts, Chart & Review Action */}
         <section className="lg:col-span-7 space-y-5">

@@ -15,6 +15,7 @@ import {
   DEFAULT_INDOOR_INPUT,
   DEFAULT_USER_PROFILE,
 } from '../data/breathewiseDefaults';
+import { DEMO_CITY_TEMPLATES } from '../data/demoCityTemplates';
 import {
   AirQualityDataService,
   calculateUsEpaAqiFromPm25,
@@ -27,7 +28,17 @@ import {
   ImpactCalculationService,
 } from '../services/ImpactCalculationService';
 import { RecommendationEngine } from '../services/RecommendationEngine';
+import { executeMidFlightWhatIfSimulation } from '../services/WhatIfSimulationService';
 import {
+  computeDiurnalWindows,
+  degreesToCompass,
+  extractHourlyCurve,
+  weatherCodeToLabel,
+} from '../services/meteorologyUtils';
+import {
+  assertAllowedExternalUrl,
+  isValidIncomingAirPayload,
+  isValidIncomingIndoorPayload,
   sanitizeLocationInput,
   sanitizeUserText,
   validateAirQualityReading,
@@ -702,6 +713,138 @@ export async function runAllBreatheWiseTests(): Promise<TestSuiteSummary> {
       const elapsed = performance.now() - t0;
       assert(elapsed < 100, `Sanitization stress too slow: ${elapsed.toFixed(1)}ms`);
       return `Sanitized 1,000 untrusted payloads in ${elapsed.toFixed(2)} ms`;
+    })
+  );
+
+  results.push(
+    await runCase('int-all-india-cities', 'All-India regional coverage across North, South, East & West cities', 'integration', () => {
+      const indiaCities = ['new-delhi', 'mumbai', 'bengaluru', 'chennai', 'kolkata', 'hyderabad', 'pune', 'lucknow', 'jaipur', 'kochi'];
+      for (const id of indiaCities) {
+        const r = AirQualityDataService.getDemoReading(id);
+        assert(r.region.includes('India') && r.aqi !== null, `Missing India reading for ${id}`);
+      }
+      const customTown = AirQualityDataService.getDemoReading('Coimbatore');
+      assert(customTown.cityName === 'Coimbatore' && customTown.aqi !== null, 'Custom Indian city name preserved');
+      return `Verified ${indiaCities.length} featured Indian cities + custom town resolution ("Coimbatore")`;
+    })
+  );
+
+  results.push(
+    await runCase('unit-whatif-service-direct', 'WhatIfSimulationService direct execution & out-of-range guard', 'unit', () => {
+      const air = AirQualityDataService.getDemoReading('bengaluru');
+      const feasible = executeMidFlightWhatIfSimulation(
+        air,
+        DEFAULT_USER_PROFILE,
+        DEFAULT_INDOOR_INPUT,
+        {
+          aqiOverride: 85,
+          pm25Override: null,
+          commuteMode: 'public_transit',
+          householdSize: 3,
+          filtration: 'hepa_purifier',
+          keepOutdoorHighExertion: false,
+          impactScenario: DEFAULT_IMPACT_SCENARIO,
+        },
+        RecommendationEngine.generateDailyActionPlan
+      );
+      assert(feasible.isFeasible && feasible.feasibilityStatus === 'feasible', 'Valid moderate scenario should be feasible');
+
+      const outOfRange = executeMidFlightWhatIfSimulation(
+        air,
+        DEFAULT_USER_PROFILE,
+        DEFAULT_INDOOR_INPUT,
+        {
+          aqiOverride: 999,
+          pm25Override: null,
+          commuteMode: 'public_transit',
+          householdSize: 3,
+          filtration: 'hepa_purifier',
+          keepOutdoorHighExertion: false,
+          impactScenario: DEFAULT_IMPACT_SCENARIO,
+        },
+        RecommendationEngine.generateDailyActionPlan
+      );
+      assert(!outOfRange.isFeasible && outOfRange.conflicts.some((c) => c.id === 'conflict-invalid-pollutant'), 'AQI 999 must be rejected');
+      return 'Verified direct WhatIfSimulationService feasible flow and out-of-range AQI rejection';
+    })
+  );
+
+  results.push(
+    await runCase('unit-demo-templates-integrity', 'DEMO_CITY_TEMPLATES dataset integrity across all 15 city profiles', 'unit', () => {
+      assert(DEMO_CITY_TEMPLATES.length === 15, `Expected 15 city presets, found ${DEMO_CITY_TEMPLATES.length}`);
+      const ids = new Set<string>();
+      for (const tpl of DEMO_CITY_TEMPLATES) {
+        assert(!ids.has(tpl.id), `Duplicate template id: ${tpl.id}`);
+        ids.add(tpl.id);
+        assert(tpl.cityName.trim().length > 0 && tpl.region.trim().length > 0, `Empty name/region on ${tpl.id}`);
+        assert(tpl.pm25 >= 0 && tpl.pm10 >= 0 && tpl.no2 >= 0 && tpl.o3 >= 0, `Negative pollutant on ${tpl.id}`);
+        assert(tpl.middayRatio > 0 && tpl.middayRatio <= 1, `Invalid middayRatio on ${tpl.id}`);
+      }
+      return `Validated ${DEMO_CITY_TEMPLATES.length} unique city templates with non-negative pollutant bounds`;
+    })
+  );
+
+  results.push(
+    await runCase('unit-server-payload-validators', 'Incoming AI route Air & Indoor payload validators block tampered objects', 'unit', () => {
+      const validAir = AirQualityDataService.getDemoReading('mumbai');
+      assert(isValidIncomingAirPayload(validAir) === true, 'Valid AirQualityReading accepted');
+      assert(isValidIncomingAirPayload({ ...validAir, aqi: 750 }) === false, 'Out-of-range AQI 750 rejected');
+      assert(isValidIncomingAirPayload({ ...validAir, aqi: -10 }) === false, 'Negative AQI rejected');
+      assert(isValidIncomingAirPayload({ cityName: 'Delhi', aqi: 100 }) === false, 'Missing weather/wind rejected');
+      assert(isValidIncomingIndoorPayload(DEFAULT_INDOOR_INPUT) === true, 'Valid IndoorEnvironmentInput accepted');
+      assert(isValidIncomingIndoorPayload({ ventilationHabit: 'closed' }) === false, 'Incomplete indoor object rejected');
+      return 'Accepted valid payloads and rejected out-of-range AQI and malformed indoor objects';
+    })
+  );
+
+  results.push(
+    await runCase('unit-external-url-allowlist', 'Outbound environmental API HTTPS hostname allowlist enforcement', 'unit', () => {
+      const okGeo = assertAllowedExternalUrl('https://geocoding-api.open-meteo.com/v1/search?name=Pune');
+      const okAqi = assertAllowedExternalUrl('https://air-quality-api.open-meteo.com/v1/air-quality?latitude=18.5&longitude=73.8');
+      assert(okGeo.hostname === 'geocoding-api.open-meteo.com' && okAqi.protocol === 'https:', 'Allowlisted HTTPS URLs accepted');
+
+      const blockedUrls = [
+        'http://air-quality-api.open-meteo.com/v1/air-quality',
+        'https://localhost/internal',
+        'https://169.254.169.254/latest/meta-data/',
+        'https://evil.example.com/steal',
+        'https://api.waqi.info:8443/feed/delhi/',
+        'https://user:pass@api.waqi.info/feed/delhi/',
+      ];
+      for (const bad of blockedUrls) {
+        let threw = false;
+        try {
+          assertAllowedExternalUrl(bad);
+        } catch {
+          threw = true;
+        }
+        assert(threw, `Expected allowlist to reject ${bad}`);
+      }
+      return `Approved allowlisted HTTPS endpoints and blocked all ${blockedUrls.length} unsafe/non-allowlisted URLs`;
+    })
+  );
+
+  results.push(
+    await runCase('unit-meteorology-compass-weather', 'Meteorology compass direction & WMO weather code mapping', 'unit', () => {
+      assert(degreesToCompass(0) === 'N' && degreesToCompass(90) === 'E' && degreesToCompass(225) === 'SW', 'Compass headings accurate');
+      assert(degreesToCompass(undefined) === null && degreesToCompass(Number.NaN) === null, 'Invalid wind degrees return null');
+      assert(weatherCodeToLabel(0) === 'Clear Sky' && weatherCodeToLabel(45) === 'Fog / Shallow Mist', 'WMO weather codes mapped');
+      return 'Verified 8-point compass conversion and WMO weather condition labeling';
+    })
+  );
+
+  results.push(
+    await runCase('unit-diurnal-curve-windows', 'Hourly diurnal curve downsampling & best/peak window extraction', 'unit', () => {
+      const curve = extractHourlyCurve({
+        time: ['2026-01-15T06:00', '2026-01-15T07:00', '2026-01-15T14:00', '2026-01-15T15:00'],
+        us_aqi: [240, 230, 140, 145],
+        pm2_5: [165, 160, 52, 55],
+        pm10: [280, 270, 95, 98],
+      });
+      assert(curve.length === 2 && curve[0].hour === '06:00' && curve[1].hour === '14:00', 'Downsampled every 2 hours');
+      const windows = computeDiurnalWindows(curve, 240);
+      assert(windows.bestWindow.includes('14:00') && windows.peakWindow.includes('06:00'), 'Best and peak windows identified accurately');
+      return `Extracted ${curve.length} diurnal points with best=${curve[1].hour} and peak=${curve[0].hour}`;
     })
   );
 

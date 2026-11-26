@@ -27,7 +27,8 @@ import type {
   DailyActionPlanResult,
   UserProfile,
 } from '../domain/airQualityTypes';
-import { LIFESTYLE_LABELS, SKYLINE_IMAGE_URL } from '../data/breathewiseDefaults';
+import { LIFESTYLE_LABELS } from '../data/breathewiseDefaults';
+import skylineImageUrl from '../assets/images/urban_winter_smog_skyline_1795710040171.jpg';
 import { AQIIndicator, getAqiVisualMeta } from './AQIIndicator';
 
 interface AirQualityDashboardProps {
@@ -89,7 +90,7 @@ export function AirQualityDashboard({
         className="relative overflow-hidden rounded-2xl bg-[#0B1220] text-white border border-slate-800 shadow-sm"
       >
         <img
-          src={SKYLINE_IMAGE_URL}
+          src={skylineImageUrl}
           alt={`Atmospheric winter skyline backdrop representing urban air conditions in ${airQuality.cityName}`}
           className="absolute inset-0 w-full h-full object-cover opacity-30 pointer-events-none select-none"
         />

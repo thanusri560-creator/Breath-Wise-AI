@@ -2,10 +2,78 @@ import type {
   AirQualityReading,
   DailyActionPlanResult,
   FamilyActionPlanResult,
+  IndoorEnvironmentInput,
   IndoorGuideResult,
   LowEmissionPlanResult,
   UserProfile,
 } from '../domain/airQualityTypes';
+
+export const ALLOWED_EXTERNAL_HOSTS = new Set<string>([
+  'api.waqi.info',
+  'geocoding-api.open-meteo.com',
+  'air-quality-api.open-meteo.com',
+  'api.open-meteo.com',
+]);
+
+/**
+ * Validates outbound environmental API URLs against a strict HTTPS hostname allowlist,
+ * preventing unauthorized external requests, plaintext HTTP downgrades, or custom port abuse.
+ */
+export function assertAllowedExternalUrl(rawUrl: string): URL {
+  const parsed = new URL(rawUrl);
+  if (parsed.protocol !== 'https:') {
+    throw new Error('Only HTTPS external environmental endpoints are permitted.');
+  }
+  if (parsed.username || parsed.password) {
+    throw new Error('Credentials in external endpoint URLs are not permitted.');
+  }
+  if (parsed.port && parsed.port !== '443') {
+    throw new Error('Non-standard ports on external environmental endpoints are not permitted.');
+  }
+  if (!ALLOWED_EXTERNAL_HOSTS.has(parsed.hostname.toLowerCase())) {
+    throw new Error(`External host "${parsed.hostname}" is not in the approved environmental API allowlist.`);
+  }
+  return parsed;
+}
+
+/**
+ * Validates that an incoming client-supplied AirQualityReading payload has valid structural fields
+ * and bounded AQI values before passing it into server-side Gemini prompt builders.
+ */
+export function isValidIncomingAirPayload(air: unknown): air is AirQualityReading {
+  if (typeof air !== 'object' || air === null) return false;
+  const candidate = air as Partial<AirQualityReading>;
+  if (typeof candidate.cityName !== 'string' || !candidate.cityName.trim()) return false;
+  if (
+    candidate.aqi !== null &&
+    (typeof candidate.aqi !== 'number' ||
+      !Number.isFinite(candidate.aqi) ||
+      candidate.aqi < 0 ||
+      candidate.aqi > 500)
+  ) {
+    return false;
+  }
+  if (typeof candidate.weather !== 'object' || candidate.weather === null) return false;
+  if (typeof candidate.wind !== 'object' || candidate.wind === null) return false;
+  return true;
+}
+
+/**
+ * Validates that an incoming IndoorEnvironmentInput payload contains expected string enums.
+ */
+export function isValidIncomingIndoorPayload(indoor: unknown): indoor is IndoorEnvironmentInput {
+  if (typeof indoor !== 'object' || indoor === null) return false;
+  const candidate = indoor as Partial<IndoorEnvironmentInput>;
+  return (
+    typeof candidate.ventilationHabit === 'string' &&
+    typeof candidate.cookingPractice === 'string' &&
+    typeof candidate.rangeHood === 'string' &&
+    typeof candidate.purifierAvailability === 'string' &&
+    typeof candidate.roomSize === 'string' &&
+    typeof candidate.primaryRoom === 'string' &&
+    Array.isArray(candidate.indoorSmokeSources)
+  );
+}
 
 const VALID_LIFESTYLES = new Set([
   'parent',
